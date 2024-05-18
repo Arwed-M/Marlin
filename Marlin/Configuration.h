@@ -1050,7 +1050,7 @@
  * E2...]]
  */
 #define DEFAULT_AXIS_STEPS_PER_UNIT                                            \
-  { 80, 80, 400, 93 }
+  { 80, 80, 400, 95.7 }
 
 /**
  * Default Max Feed Rate (mm/s)
@@ -1341,7 +1341,7 @@
 
 // Most probes should stay away from the edges of the bed, but
 // with NOZZLE_AS_PROBE this can be negative for a wider probing area.
-#define PROBING_MARGIN 20
+#define PROBING_MARGIN 10
 
 // X and Y axis travel speed (mm/min) between probes
 #define XY_PROBE_FEEDRATE (50 * 60)
@@ -1399,8 +1399,8 @@
  * A total of 2 does fast/slow probes with a weighted average.
  * A total of 3 or more adds more slow probes, taking the average.
  */
-#define MULTIPLE_PROBING 3
-// #define EXTRA_PROBING    1
+#define MULTIPLE_PROBING 5
+#define EXTRA_PROBING 1
 
 /**
  * Z probes require clearance when deploying, stowing, and moving between
@@ -1417,8 +1417,8 @@
  *     But: `M851 Z+1` with a CLEARANCE of 2  =>  2mm from bed to nozzle.
  */
 #define Z_CLEARANCE_DEPLOY_PROBE 10  // Z Clearance for Deploy/Stow
-#define Z_CLEARANCE_BETWEEN_PROBES 5 // Z Clearance between probe points
-#define Z_CLEARANCE_MULTI_PROBE 5    // Z Clearance between multiple probes
+#define Z_CLEARANCE_BETWEEN_PROBES 3 // Z Clearance between probe points
+#define Z_CLEARANCE_MULTI_PROBE 2    // Z Clearance between multiple probes
 // #define Z_AFTER_PROBING           5 // Z position after probing is done
 
 #define Z_PROBE_LOW_POINT                                                      \
@@ -1793,7 +1793,7 @@
 #if EITHER(AUTO_BED_LEVELING_LINEAR, AUTO_BED_LEVELING_BILINEAR)
 
 // Set the number of grid points per dimension.
-#define GRID_MAX_POINTS_X 5
+#define GRID_MAX_POINTS_X 6
 #define GRID_MAX_POINTS_Y GRID_MAX_POINTS_X
 
 // Probe along the Y axis, advancing X after each column
@@ -2071,7 +2071,7 @@
 //
 #define PREHEAT_1_LABEL "PLA"
 #define PREHEAT_1_TEMP_HOTEND 190
-#define PREHEAT_1_TEMP_BED 50
+#define PREHEAT_1_TEMP_BED 60
 #define PREHEAT_1_TEMP_CHAMBER 35
 #define PREHEAT_1_FAN_SPEED 255 // Value from 0 to 255
 

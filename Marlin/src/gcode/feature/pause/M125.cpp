@@ -52,6 +52,9 @@
  *    A<pos>    = Override park position A (requires AXIS*_NAME 'A')
  *    B<pos>    = Override park position B (requires AXIS*_NAME 'B')
  *    C<pos>    = Override park position C (requires AXIS*_NAME 'C')
+ *    U<pos>    = Override park position U (requires AXIS*_NAME 'U')
+ *    V<pos>    = Override park position V (requires AXIS*_NAME 'V')
+ *    W<pos>    = Override park position W (requires AXIS*_NAME 'W')
  *    Z<linear> = Override Z raise
  *
  *  With an LCD menu:
@@ -64,23 +67,28 @@ void GcodeSuite::M125() {
   xyz_pos_t park_point = NOZZLE_PARK_POINT;
 
   // Move to filament change position or given position
-  LINEAR_AXIS_CODE(
-    if (parser.seenval('X')) park_point.x = RAW_X_POSITION(parser.linearval('X')),
-    if (parser.seenval('Y')) park_point.y = RAW_Y_POSITION(parser.linearval('Y')),
+  NUM_AXIS_CODE(
+    if (parser.seenval('X')) park_point.x = motion.raw_x(parser.linearval('X')),
+    if (parser.seenval('Y')) park_point.y = motion.raw_y(parser.linearval('Y')),
     NOOP,
-    if (parser.seenval(AXIS4_NAME)) park_point.i = RAW_I_POSITION(parser.linearval(AXIS4_NAME)),
-    if (parser.seenval(AXIS5_NAME)) park_point.j = RAW_J_POSITION(parser.linearval(AXIS5_NAME)),
-    if (parser.seenval(AXIS6_NAME)) park_point.k = RAW_K_POSITION(parser.linearval(AXIS6_NAME))
+    if (parser.seenval(AXIS4_NAME)) park_point.i = motion.raw_i(parser.linearval(AXIS4_NAME)),
+    if (parser.seenval(AXIS5_NAME)) park_point.j = motion.raw_j(parser.linearval(AXIS5_NAME)),
+    if (parser.seenval(AXIS6_NAME)) park_point.k = motion.raw_k(parser.linearval(AXIS6_NAME)),
+    if (parser.seenval(AXIS7_NAME)) park_point.u = motion.raw_u(parser.linearval(AXIS7_NAME)),
+    if (parser.seenval(AXIS8_NAME)) park_point.v = motion.raw_v(parser.linearval(AXIS8_NAME)),
+    if (parser.seenval(AXIS9_NAME)) park_point.w = motion.raw_w(parser.linearval(AXIS9_NAME))
   );
 
   // Lift Z axis
-  if (parser.seenval('Z')) park_point.z = parser.linearval('Z');
-
-  #if HAS_HOTEND_OFFSET && NONE(DUAL_X_CARRIAGE, DELTA)
-    park_point += hotend_offset[active_extruder];
+  #if HAS_Z_AXIS
+    if (parser.seenval('Z')) park_point.z = parser.linearval('Z');
   #endif
 
-  const bool sd_printing = TERN0(SDSUPPORT, IS_SD_PRINTING());
+  #if HAS_HOTEND_OFFSET && NONE(DUAL_X_CARRIAGE, DELTA)
+    park_point += motion.active_hotend_offset();
+  #endif
+
+  const bool sd_printing = card.isStillPrinting();
 
   ui.pause_show_message(PAUSE_MESSAGE_PARKING, PAUSE_MODE_PAUSE_PRINT);
 
@@ -88,7 +96,7 @@ void GcodeSuite::M125() {
   const bool show_lcd = TERN0(HAS_MARLINUI_MENU, parser.boolval('P'));
 
   if (pause_print(retract, park_point, show_lcd, 0)) {
-    if (ENABLED(EXTENSIBLE_UI) || BOTH(EMERGENCY_PARSER, HOST_PROMPT_SUPPORT) || !sd_printing || show_lcd) {
+    if (ENABLED(HAS_DISPLAY) || ALL(EMERGENCY_PARSER, HOST_PROMPT_SUPPORT) || !sd_printing || show_lcd) {
       wait_for_confirmation(false, 0);
       resume_print(0, 0, -retract, 0);
     }

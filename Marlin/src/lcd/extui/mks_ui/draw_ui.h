@@ -113,36 +113,36 @@
 
   #define titleHeight        36   // TFT_screen.title_high
   #define INTERVAL_H          2   // TFT_screen.gap_h // 2
-  #define INTERVAL_V          2   // TFT_screen.gap_v // 2
-  #define BTN_X_PIXEL       117   // TFT_screen.btn_x_pixel
-  #define BTN_Y_PIXEL       140   // TFT_screen.btn_y_pixel
+  #define INTERVAL_W          2   // TFT_screen.gap_v // 2
+  #define BTN_SIZE_X        117   // TFT_screen.btn_x_pixel
+  #define BTN_SIZE_Y        140   // TFT_screen.btn_y_pixel
 
   #define SIMPLE_FIRST_PAGE_GRAP   30
 
   #define BUTTON_TEXT_Y_OFFSET    -20
 
-  #define TITLE_XPOS          3    // TFT_screen.title_xpos
-  #define TITLE_YPOS          5    // TFT_screen.title_ypos
+  #define TITLE_POS_X         3    // TFT_screen.title_xpos
+  #define TITLE_POS_Y         5    // TFT_screen.title_ypos
 
   #define FILE_BTN_CNT        6
 
-  #define OTHER_BTN_XPIEL   117
-  #define OTHER_BTN_YPIEL    92
+  #define OTHER_BTN_SIZE_X  117
+  #define OTHER_BTN_SIZE_Y   92
 
   #define FILE_PRE_PIC_X_OFFSET 8
   #define FILE_PRE_PIC_Y_OFFSET 0
 
   #define PREVIEW_LITTLE_PIC_SIZE  40910  // 400*100+9*101+1
-  #define PREVIEW_SIZE      202720        // (PREVIEW_LITTLE_PIC_SIZE+800*200+201*9+1)
+  #define PREVIEW_SIZE            202720  // (PREVIEW_LITTLE_PIC_SIZE+800*200+201*9+1)
 
   // machine parameter ui
-  #define PARA_UI_POS_X             10
-  #define PARA_UI_POS_Y             50
+  #define PARA_UI_POS_X              10
+  #define PARA_UI_POS_Y              50
 
   #define PARA_UI_SIZE_X            450
-  #define PARA_UI_SIZE_Y            40
+  #define PARA_UI_SIZE_Y             40
 
-  #define PARA_UI_ARROW_V          12
+  #define PARA_UI_ARROW_V            12
 
   #define PARA_UI_BACK_POS_X        400
   #define PARA_UI_BACK_POS_Y        270
@@ -152,31 +152,31 @@
 
   #define PARA_UI_VALUE_SIZE_X      370
   #define PARA_UI_VALUE_POS_X       400
-  #define PARA_UI_VALUE_V           5
+  #define PARA_UI_VALUE_V             5
 
   #define PARA_UI_STATE_POS_X       380
-  #define PARA_UI_STATE_V           2
+  #define PARA_UI_STATE_V             2
 
   #define PARA_UI_VALUE_SIZE_X_2    200
   #define PARA_UI_VALUE_POS_X_2     320
-  #define PARA_UI_VALUE_V_2         5
+  #define PARA_UI_VALUE_V_2           5
 
-  #define PARA_UI_VALUE_BTN_X_SIZE  70
-  #define PARA_UI_VALUE_BTN_Y_SIZE  28
+  #define PARA_UI_VALUE_BTN_X_SIZE   70
+  #define PARA_UI_VALUE_BTN_Y_SIZE   28
 
-  #define PARA_UI_BACK_BTN_X_SIZE   70
-  #define PARA_UI_BACK_BTN_Y_SIZE   40
+  #define PARA_UI_BACK_BTN_X_SIZE    70
+  #define PARA_UI_BACK_BTN_Y_SIZE    40
 
-  #define QRCODE_X                  20
-  #define QRCODE_Y                  40
+  #define QRCODE_X                   20
+  #define QRCODE_Y                   40
   #define QRCODE_WIDTH              160
 
-#else // ifdef TFT35
+#else // !TFT35
 
   #define TFT_WIDTH     320
   #define TFT_HEIGHT    240
 
-#endif // ifdef TFT35
+#endif
 
 #ifdef __cplusplus
   extern "C" {
@@ -205,7 +205,7 @@ typedef struct {
             filamentchange_unload_length,
             filamentchange_unload_speed;
   celsius_t filament_limit_temp;
-  float     pausePosX, pausePosY, pausePosZ;
+  xyz_pos_t pausePos;
   uint32_t  curFilesize;
 } CFG_ITMES;
 
@@ -236,9 +236,9 @@ typedef struct UI_Config_Struct {
                            eStepMax = 10;
   // Extruder speed (mm/s)
   uint8_t extruSpeed;
-  static constexpr uint8_t eSpeedH =  1,
+  static constexpr uint8_t eSpeedH = 20,
                            eSpeedN = 10,
-                           eSpeedL = 20;
+                           eSpeedL =  1;
   uint8_t print_state;
   uint8_t stepPrintSpeed;
   uint8_t waitEndMoves;
@@ -255,10 +255,7 @@ typedef struct UI_Config_Struct {
            filament_unloading_time_cnt;
   float move_dist;
   celsius_t hotendTargetTempBak;
-  float current_x_position_bak,
-        current_y_position_bak,
-        current_z_position_bak,
-        current_e_position_bak;
+  xyze_pos_t current_position_bak;
 } UI_CFG;
 
 typedef enum {
@@ -294,9 +291,7 @@ typedef enum {
   LEVELING_UI,
   MESHLEVELING_UI,
   BIND_UI,
-  #if HAS_BED_PROBE
-    NOZZLE_PROBE_OFFSET_UI,
-  #endif
+  OPTITEM(HAS_BED_PROBE, NOZZLE_PROBE_OFFSET_UI)
   TOOL_UI,
   HARDWARE_TEST_UI,
   WIFI_LIST_UI,
@@ -402,11 +397,11 @@ typedef enum {
   level_pos_y4,
   level_pos_x5,
   level_pos_y5,
+
   #if HAS_BED_PROBE
-    x_offset,
-    y_offset,
-    z_offset,
+    x_offset, y_offset, z_offset,
   #endif
+
   load_length,
   load_speed,
   unload_length,
@@ -463,14 +458,13 @@ void update_gcode_command(int addr, uint8_t *s);
 void get_gcode_command(int addr, uint8_t *d);
 void lv_serial_capt_hook(void *, uint8_t);
 void lv_eom_hook(void *);
-#if HAS_GCODE_PREVIEW
+#if MKS_GCODE_PREVIEW
   void disp_pre_gcode(int xpos_pixel, int ypos_pixel);
 #endif
 void GUI_RefreshPage();
 void clear_cur_ui();
 void draw_return_ui();
 void goto_previous_ui();
-void sd_detection();
 void gCfg_to_spiFlah();
 void print_time_count();
 

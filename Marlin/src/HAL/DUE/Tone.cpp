@@ -24,7 +24,7 @@
 
 /**
  * Description: Tone function for Arduino Due and compatible (SAM3X8E)
- * Derived from https://forum.arduino.cc/index.php?topic=136500.msg2903012#msg2903012
+ * Derived from https://forum.arduino.cc/t/arduino-due-and-tone/133302/13
  */
 
 #ifdef ARDUINO_ARCH_SAM
@@ -35,7 +35,7 @@
 static pin_t tone_pin;
 volatile static int32_t toggles;
 
-void tone(const pin_t _pin, const unsigned int frequency, const unsigned long duration) {
+void tone(const pin_t _pin, const unsigned int frequency, const unsigned long duration/*=0*/) {
   tone_pin = _pin;
   toggles = 2 * frequency * duration / 1000;
   HAL_timer_start(MF_TIMER_TONE, 2 * frequency);

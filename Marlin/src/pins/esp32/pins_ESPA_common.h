@@ -33,14 +33,6 @@
 #endif
 
 //
-// Disable I2S stepper stream, by default
-//
-#undef I2S_STEPPER_STREAM
-#undef I2S_WS
-#undef I2S_BCK
-#undef I2S_DATA
-
-//
 // Limit Switches
 //
 #define X_STOP_PIN                            34
@@ -76,7 +68,7 @@
 // Heaters / Fans
 //
 #define HEATER_0_PIN                           2
-#define FAN_PIN                               13
+#define FAN0_PIN                              13
 #define HEATER_BED_PIN                         4
 
 //
@@ -85,5 +77,5 @@
 #define SD_MOSI_PIN                           23
 #define SD_MISO_PIN                           19
 #define SD_SCK_PIN                            18
-#define SDSS                                   5
+#define SD_SS_PIN                              5
 #define USES_SHARED_SPI                           // SPI is shared by SD card with TMC SPI drivers

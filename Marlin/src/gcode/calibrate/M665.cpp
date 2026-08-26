@@ -62,6 +62,8 @@
   }
 
   void GcodeSuite::M665_report(const bool forReplay/*=true*/) {
+    TERN_(MARLIN_SMALL_BUILD, return);
+
     report_heading_etc(forReplay, F(STR_DELTA_SETTINGS));
     SERIAL_ECHOLNPGM_P(
         PSTR("  M665 L"), LINEAR_UNIT(delta_diagonal_rod)
@@ -86,13 +88,13 @@
    *
    * Parameters:
    *
-   *   S[segments-per-second] - Segments-per-second
+   *   S[segments]          - Segments-per-second
    *
    * Without NO_WORKSPACE_OFFSETS:
    *
-   *   P[theta-psi-offset]    - Theta-Psi offset, added to the shoulder (A/X) angle
-   *   T[theta-offset]        - Theta     offset, added to the elbow    (B/Y) angle
-   *   Z[z-offset]            - Z offset, added to Z
+   *   P[theta-psi-offset]  - Theta-Psi offset, added to the shoulder (A/X) angle
+   *   T[theta-offset]      - Theta     offset, added to the elbow    (B/Y) angle
+   *   Z[z-offset]          - Z offset, added to Z
    *
    *   A, P, and X are all aliases for the shoulder angle
    *   B, T, and Y are all aliases for the elbow angle
@@ -104,13 +106,13 @@
 
     #if HAS_SCARA_OFFSET
 
-      if (parser.seenval('Z')) scara_home_offset.z = parser.value_linear_units();
+      if (parser.seenval('Z')) motion.scara_home_offset.z = parser.value_linear_units();
 
       const bool hasA = parser.seenval('A'), hasP = parser.seenval('P'), hasX = parser.seenval('X');
       const uint8_t sumAPX = hasA + hasP + hasX;
       if (sumAPX) {
         if (sumAPX == 1)
-          scara_home_offset.a = parser.value_float();
+          motion.scara_home_offset.a = parser.value_float();
         else {
           SERIAL_ERROR_MSG("Only one of A, P, or X is allowed.");
           return;
@@ -121,7 +123,7 @@
       const uint8_t sumBTY = hasB + hasT + hasY;
       if (sumBTY) {
         if (sumBTY == 1)
-          scara_home_offset.b = parser.value_float();
+          motion.scara_home_offset.b = parser.value_float();
         else {
           SERIAL_ERROR_MSG("Only one of B, T, or Y is allowed.");
           return;
@@ -132,13 +134,15 @@
   }
 
   void GcodeSuite::M665_report(const bool forReplay/*=true*/) {
+    TERN_(MARLIN_SMALL_BUILD, return);
+
     report_heading_etc(forReplay, F(STR_SCARA_SETTINGS " (" STR_S_SEG_PER_SEC TERN_(HAS_SCARA_OFFSET, " " STR_SCARA_P_T_Z) ")"));
     SERIAL_ECHOLNPGM_P(
       PSTR("  M665 S"), segments_per_second
       #if HAS_SCARA_OFFSET
-        , SP_P_STR, scara_home_offset.a
-        , SP_T_STR, scara_home_offset.b
-        , SP_Z_STR, LINEAR_UNIT(scara_home_offset.z)
+        , SP_P_STR, motion.scara_home_offset.a
+        , SP_T_STR, motion.scara_home_offset.b
+        , SP_Z_STR, LINEAR_UNIT(motion.scara_home_offset.z)
       #endif
     );
   }
@@ -152,20 +156,57 @@
    *
    * Parameters:
    *
-   *   S[segments-per-second] - Segments-per-second
+   *   S[segments]  - Segments-per-second
+   *   L[left]      - Work area minimum X
+   *   R[right]     - Work area maximum X
+   *   T[top]       - Work area maximum Y
+   *   B[bottom]    - Work area minimum Y
+   *   H[length]    - Maximum belt length
    */
   void GcodeSuite::M665() {
-    if (parser.seenval('S'))
-      segments_per_second = parser.value_float();
-    else
-      M665_report();
+    if (!parser.seen_any()) return M665_report();
+    if (parser.seenval('S')) segments_per_second = parser.value_float();
+    if (parser.seenval('L')) draw_area_min.x = parser.value_linear_units();
+    if (parser.seenval('R')) draw_area_max.x = parser.value_linear_units();
+    if (parser.seenval('T')) draw_area_max.y = parser.value_linear_units();
+    if (parser.seenval('B')) draw_area_min.y = parser.value_linear_units();
+    if (parser.seenval('H')) polargraph_max_belt_len = parser.value_linear_units();
   }
 
   void GcodeSuite::M665_report(const bool forReplay/*=true*/) {
-    report_heading_etc(forReplay, F(STR_POLARGRAPH_SETTINGS " (" STR_S_SEG_PER_SEC ")"));
-    SERIAL_ECHOLNPGM("  M665 S", segments_per_second);
+    TERN_(MARLIN_SMALL_BUILD, return);
+
+    report_heading_etc(forReplay, F(STR_POLARGRAPH_SETTINGS));
+    SERIAL_ECHOLNPGM_P(
+      PSTR("  M665 S"), LINEAR_UNIT(segments_per_second),
+      PSTR(" L"), LINEAR_UNIT(draw_area_min.x),
+      PSTR(" R"), LINEAR_UNIT(draw_area_max.x),
+      SP_T_STR, LINEAR_UNIT(draw_area_max.y),
+      SP_B_STR, LINEAR_UNIT(draw_area_min.y),
+      PSTR(" H"), LINEAR_UNIT(polargraph_max_belt_len)
+    );
   }
 
-#endif
+#elif ENABLED(POLAR)
+
+  #include "../../module/polar.h"
+
+  /**
+   * M665: Set POLAR settings
+   * Parameters:
+   *   S[segments]  - Segments-per-second
+   */
+  void GcodeSuite::M665() {
+    if (!parser.seen_any()) return M665_report();
+    if (parser.seenval('S')) segments_per_second = parser.value_float();
+  }
+
+  void GcodeSuite::M665_report(const bool forReplay/*=true*/) {
+    TERN_(MARLIN_SMALL_BUILD, return);
+    report_heading_etc(forReplay, F(STR_POLAR_SETTINGS));
+    SERIAL_ECHOLNPGM_P(PSTR("  M665 S"), segments_per_second);
+  }
+
+#endif // POLAR
 
 #endif // IS_KINEMATIC

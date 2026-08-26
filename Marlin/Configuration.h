@@ -267,7 +267,7 @@
  */
 // #define MAGNETIC_PARKING_EXTRUDER
 
-#if EITHER(PARKING_EXTRUDER, MAGNETIC_PARKING_EXTRUDER)
+#if ANY(PARKING_EXTRUDER, MAGNETIC_PARKING_EXTRUDER)
 
 #define PARKING_EXTRUDER_PARKING_X                                             \
   { -78, 184 } // X positions for parking the extruders
@@ -432,7 +432,7 @@
 // #define POWER_OFF_DELAY          60 // (s) Delay of poweroff after M81
 // command. Useful to let fans run for extra time.
 #endif
-#if EITHER(AUTO_POWER_CONTROL, POWER_OFF_WAIT_FOR_COOLDOWN)
+#if ANY(AUTO_POWER_CONTROL, POWER_OFF_WAIT_FOR_COOLDOWN)
 // #define AUTO_POWER_E_TEMP        50 // (°C) PSU on if any extruder is over
 // this temperature #define AUTO_POWER_CHAMBER_TEMP  30 // (°C) PSU on if the
 // chamber is over this temperature #define AUTO_POWER_COOLER_TEMP   26 // (°C)
@@ -674,17 +674,17 @@
 #if ENABLED(PID_PARAMS_PER_HOTEND)
 // Specify up to one value per hotend here, according to your setup.
 // If there are fewer values, the last one applies to the remaining hotends.
-#define DEFAULT_Kp_LIST                                                        \
+#define DEFAULT_KP_LIST                                                        \
   { 28.72, 28.72 }
-#define DEFAULT_Ki_LIST                                                        \
+#define DEFAULT_KI_LIST                                                        \
   { 2.62, 2.62 }
-#define DEFAULT_Kd_LIST                                                        \
+#define DEFAULT_KD_LIST                                                        \
   { 78.81, 78.81 }
 #else
 // Ender 3 v2
-#define DEFAULT_Kp 28.72
-#define DEFAULT_Ki 2.62
-#define DEFAULT_Kd 78.81
+#define DEFAULT_KP 28.72
+#define DEFAULT_KI 2.62
+#define DEFAULT_KD 78.81
 #endif
 #endif // PIDTEMP
 
@@ -726,9 +726,9 @@
 // #define PID_BED_DEBUG // Sends debug data to the serial port.
 
 // Ender 3 V2
-#define DEFAULT_bedKp 462.10
-#define DEFAULT_bedKi 85.47
-#define DEFAULT_bedKd 624.59
+#define DEFAULT_BED_KP 462.10
+#define DEFAULT_BED_KI 85.47
+#define DEFAULT_BED_KD 624.59
 
 // FIND YOUR OWN: "M303 E-1 C8 S90" to run autotune on the bed at 90 degreesC
 // for 8 cycles.
@@ -873,23 +873,6 @@
 
 // @section homing
 
-// Specify here all the endstop connectors that are connected to any endstop or
-// probe. Almost all printers will be using one per axis. Probes will use one or
-// more of the extra connectors. Leave undefined any used for non-endstop and
-// non-probe purposes.
-#define USE_XMIN_PLUG
-#define USE_YMIN_PLUG
-#define USE_ZMIN_PLUG
-// #define USE_IMIN_PLUG
-// #define USE_JMIN_PLUG
-// #define USE_KMIN_PLUG
-// #define USE_XMAX_PLUG
-// #define USE_YMAX_PLUG
-// #define USE_ZMAX_PLUG
-// #define USE_IMAX_PLUG
-// #define USE_JMAX_PLUG
-// #define USE_KMAX_PLUG
-
 // Enable pullup for all endstops to prevent a floating state
 #define ENDSTOPPULLUPS
 #if DISABLED(ENDSTOPPULLUPS)
@@ -930,32 +913,18 @@
 
 // Mechanical endstop with COM to ground and NC to Signal uses "false" here
 // (most common setup).
-#define X_MIN_ENDSTOP_INVERTING                                                \
-  false // Set to true to invert the logic of the endstop.
-#define Y_MIN_ENDSTOP_INVERTING                                                \
-  false // Set to true to invert the logic of the endstop.
-#define Z_MIN_ENDSTOP_INVERTING                                                \
-  false // Set to true to invert the logic of the endstop.
-#define I_MIN_ENDSTOP_INVERTING                                                \
-  false // Set to true to invert the logic of the endstop.
-#define J_MIN_ENDSTOP_INVERTING                                                \
-  false // Set to true to invert the logic of the endstop.
-#define K_MIN_ENDSTOP_INVERTING                                                \
-  false // Set to true to invert the logic of the endstop.
-#define X_MAX_ENDSTOP_INVERTING                                                \
-  false // Set to true to invert the logic of the endstop.
-#define Y_MAX_ENDSTOP_INVERTING                                                \
-  false // Set to true to invert the logic of the endstop.
-#define Z_MAX_ENDSTOP_INVERTING                                                \
-  false // Set to true to invert the logic of the endstop.
-#define I_MAX_ENDSTOP_INVERTING                                                \
-  false // Set to true to invert the logic of the endstop.
-#define J_MAX_ENDSTOP_INVERTING                                                \
-  false // Set to true to invert the logic of the endstop.
-#define K_MAX_ENDSTOP_INVERTING                                                \
-  false // Set to true to invert the logic of the endstop.
-#define Z_MIN_PROBE_ENDSTOP_INVERTING                                          \
-  false // Set to true to invert the logic of the probe.
+#define X_MIN_ENDSTOP_HIT_STATE LOW
+#define Y_MIN_ENDSTOP_HIT_STATE LOW
+#define Z_MIN_ENDSTOP_HIT_STATE HIGH
+#define I_MIN_ENDSTOP_HIT_STATE LOW
+#define J_MIN_ENDSTOP_HIT_STATE LOW
+#define K_MIN_ENDSTOP_HIT_STATE LOW
+#define X_MAX_ENDSTOP_HIT_STATE LOW
+#define Y_MAX_ENDSTOP_HIT_STATE LOW
+#define Z_MAX_ENDSTOP_HIT_STATE LOW
+#define I_MAX_ENDSTOP_HIT_STATE LOW
+#define J_MAX_ENDSTOP_HIT_STATE LOW
+#define K_MAX_ENDSTOP_HIT_STATE LOW
 
 /**
  * Stepper Drivers
@@ -1225,6 +1194,8 @@
  * The BLTouch probe uses a Hall effect sensor and emulates a servo.
  */
 #define BLTOUCH
+#define Z_MIN_PROBE_ENDSTOP_HIT_STATE HIGH
+#define Z_MIN_ENDSTOP_HIT_STATE HIGH
 
 /**
  * MagLev V4 probe by MDD
@@ -1425,8 +1396,8 @@
   -2 // Farthest distance below the trigger-point to go before stopping
 
 // For M851 give a range for adjusting the Z probe offset
-#define Z_PROBE_OFFSET_RANGE_MIN -10
-#define Z_PROBE_OFFSET_RANGE_MAX 10
+#define PROBE_OFFSET_ZMIN -10
+#define PROBE_OFFSET_ZMAX 10
 
 // Enable the M48 repeatability test to test probe accuracy
 // #define Z_MIN_PROBE_REPEATABILITY_TEST
@@ -1491,7 +1462,7 @@
 // @section extruder
 
 #define DISABLE_E false           // Disable the extruder when not stepping
-#define DISABLE_INACTIVE_EXTRUDER // Keep only the active extruder enabled
+#define DISABLE_OTHER_EXTRUDERS // Keep only the active extruder enabled
 
 // @section machine
 
@@ -1597,7 +1568,7 @@
 #define MAX_SOFTWARE_ENDSTOP_K
 #endif
 
-#if EITHER(MIN_SOFTWARE_ENDSTOPS, MAX_SOFTWARE_ENDSTOPS)
+#if ANY(MIN_SOFTWARE_ENDSTOPS, MAX_SOFTWARE_ENDSTOPS)
 // #define SOFT_ENDSTOPS_MENU_ITEM  // Enable/Disable software endstops from the
 // LCD
 #endif
@@ -1790,7 +1761,7 @@
 
 #endif
 
-#if EITHER(AUTO_BED_LEVELING_LINEAR, AUTO_BED_LEVELING_BILINEAR)
+#if ANY(AUTO_BED_LEVELING_LINEAR, AUTO_BED_LEVELING_BILINEAR)
 
 // Set the number of grid points per dimension.
 #define GRID_MAX_POINTS_X 6
@@ -2868,7 +2839,7 @@
 //
 // #define ANYCUBIC_LCD_I3MEGA
 // #define ANYCUBIC_LCD_CHIRON
-#if EITHER(ANYCUBIC_LCD_I3MEGA, ANYCUBIC_LCD_CHIRON)
+#if ANY(ANYCUBIC_LCD_I3MEGA, ANYCUBIC_LCD_CHIRON)
 #define LCD_SERIAL_PORT 3 // Default is 3 for Anycubic
 // #define ANYCUBIC_LCD_DEBUG
 #endif
@@ -3075,7 +3046,7 @@
 // #define TOUCH_OFFSET_Y        257
 // #define TOUCH_ORIENTATION TOUCH_LANDSCAPE
 
-#if BOTH(TOUCH_SCREEN_CALIBRATION, EEPROM_SETTINGS)
+#if ALL(TOUCH_SCREEN_CALIBRATION, EEPROM_SETTINGS)
 #define TOUCH_CALIBRATION_AUTO_SAVE // Auto save successful calibration values
                                     // to EEPROM
 #endif
@@ -3167,7 +3138,7 @@
 // #define RGB_LED
 // #define RGBW_LED
 
-#if EITHER(RGB_LED, RGBW_LED)
+#if ANY(RGB_LED, RGBW_LED)
 // #define RGB_LED_R_PIN 34
 // #define RGB_LED_G_PIN 43
 // #define RGB_LED_B_PIN 35
@@ -3232,7 +3203,6 @@
  * Set this manually if there are extra servos needing manual control.
  * Set to 0 to turn off servo support.
  */
-#define NUM_SERVOS 3 // Note: Servo index starts with 0 for M280-M282
 // commands
 
 // (ms) Delay before the next move will start, to give the servo time to reach

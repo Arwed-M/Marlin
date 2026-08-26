@@ -29,25 +29,21 @@
 #include "../../module/probe.h"
 #include "../../module/planner.h"
 
-#if ENABLED(BABYSTEP_ZPROBE_OFFSET)
-  #include "../../core/serial.h"
-#endif
-
 #if ENABLED(MESH_BED_LEVELING)
   #include "../../feature/bedlevel/bedlevel.h"
 #endif
 
 #if ENABLED(BABYSTEP_ZPROBE_OFFSET)
 
-  FORCE_INLINE void mod_probe_offset(const_float_t offs) {
-    if (TERN1(BABYSTEP_HOTEND_Z_OFFSET, active_extruder == 0)) {
+  FORCE_INLINE void mod_probe_offset(const float offs) {
+    if (TERN1(BABYSTEP_HOTEND_Z_OFFSET, motion.extruder == 0)) {
       probe.offset.z += offs;
       SERIAL_ECHO_MSG(STR_PROBE_OFFSET " " STR_Z, probe.offset.z);
     }
     else {
       #if ENABLED(BABYSTEP_HOTEND_Z_OFFSET)
-        hotend_offset[active_extruder].z -= offs;
-        SERIAL_ECHO_MSG(STR_PROBE_OFFSET STR_Z ": ", hotend_offset[active_extruder].z);
+        motion.active_hotend_offset().z -= offs;
+        SERIAL_ECHO_MSG(STR_PROBE_OFFSET STR_Z ": ", motion.active_hotend_offset().z);
       #endif
     }
   }
@@ -69,7 +65,7 @@
  */
 void GcodeSuite::M290() {
   #if ENABLED(BABYSTEP_XY)
-    LOOP_LINEAR_AXES(a)
+    LOOP_NUM_AXES(a)
       if (parser.seenval(AXIS_CHAR(a)) || (a == Z_AXIS && parser.seenval('S'))) {
         const float offs = constrain(parser.value_axis_units((AxisEnum)a), -2, 2);
         babystep.add_mm((AxisEnum)a, offs);
@@ -87,7 +83,7 @@ void GcodeSuite::M290() {
     }
   #endif
 
-  if (!parser.seen(LINEAR_AXIS_GANG("X", "Y", "Z", STR_I, STR_J, STR_K)) || parser.seen('R')) {
+  if (!parser.seen(STR_AXES_MAIN) || parser.seen('R')) {
     SERIAL_ECHO_START();
 
     #if ENABLED(BABYSTEP_ZPROBE_OFFSET)
@@ -97,21 +93,21 @@ void GcodeSuite::M290() {
     #if ENABLED(BABYSTEP_HOTEND_Z_OFFSET)
     {
       SERIAL_ECHOLNPGM_P(
-        PSTR("Hotend "), active_extruder
+        PSTR("Hotend "), motion.extruder
         #if ENABLED(BABYSTEP_XY)
-          , PSTR("Offset X"), hotend_offset[active_extruder].x
-          , SP_Y_STR, hotend_offset[active_extruder].y
+          , PSTR("Offset X"), motion.active_hotend_offset().x
+          , SP_Y_STR, motion.active_hotend_offset().y
           , SP_Z_STR
         #else
           , PSTR("Offset Z")
         #endif
-        , hotend_offset[active_extruder].z
+        , motion.active_hotend_offset().z
       );
     }
     #endif
 
     #if ENABLED(MESH_BED_LEVELING)
-      SERIAL_ECHOLNPGM("MBL Adjust Z", mbl.z_offset);
+      SERIAL_ECHOLNPGM("MBL Adjust Z", bedlevel.z_offset);
     #endif
 
     #if ENABLED(BABYSTEP_DISPLAY_TOTAL)
@@ -130,5 +126,11 @@ void GcodeSuite::M290() {
     #endif
   }
 }
+
+#if ENABLED(EP_BABYSTEPPING) && DISABLED(EMERGENCY_PARSER)
+  // Without Emergency Parser M293/M294 will be added to the queue
+  void GcodeSuite::M293() { babystep.z_up(); }
+  void GcodeSuite::M294() { babystep.z_down(); }
+#endif
 
 #endif // BABYSTEPPING

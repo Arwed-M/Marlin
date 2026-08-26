@@ -1,32 +1,20 @@
-import argparse
-import sys
-import os
-import time
-import random
-import serial
-
-Import("env")
-
-# Needed (only) for compression, but there are problems with pip install heatshrink
-#try:
-#    import heatshrink
-#except ImportError:
-#    # Install heatshrink
-#    print("Installing 'heatshrink' python module...")
-#    env.Execute(env.subst("$PYTHONEXE -m pip install heatshrink"))
-#
-# Not tested: If it's safe to install python libraries in PIO python try:
-#    env.Execute(env.subst("$PYTHONEXE -m pip install https://github.com/p3p/pyheatshrink/releases/download/0.3.3/pyheatshrink-pip.zip"))
+import argparse, sys, os, time, random, serial
+from SCons.Script import DefaultEnvironment
+env = DefaultEnvironment()
 
 import MarlinBinaryProtocol
-
-# Internal debug flag
-Debug = False
 
 #-----------------#
 # Upload Callback #
 #-----------------#
 def Upload(source, target, env):
+
+    #-------#
+    # Debug #
+    #-------#
+    Debug = False                # Set to True to enable script debug
+    def debugPrint(data):
+        if Debug: print(f"[Debug]: {data}")
 
     #------------------#
     # Marlin functions #
@@ -39,19 +27,35 @@ def Upload(source, target, env):
     # Port functions #
     #----------------#
     def _GetUploadPort(env):
-        if Debug: print('Autodetecting upload port...')
+        debugPrint('Autodetecting upload port...')
         env.AutodetectUploadPort(env)
-        port = env.subst('$UPLOAD_PORT')
-        if not port:
+        portName = env.subst('$UPLOAD_PORT')
+        if not portName:
             raise Exception('Error detecting the upload port.')
-        if Debug: print('OK')
-        return port
+        debugPrint('OK')
+        return portName
 
     #-------------------------#
     # Simple serial functions #
     #-------------------------#
+    def _OpenPort():
+        # Open serial port
+        if port.is_open: return
+        debugPrint('Opening upload port...')
+        port.open()
+        port.reset_input_buffer()
+        debugPrint('OK')
+
+    def _ClosePort():
+        # Open serial port
+        if port is None: return
+        if not port.is_open: return
+        debugPrint('Closing upload port...')
+        port.close()
+        debugPrint('OK')
+
     def _Send(data):
-        if Debug: print(f'>> {data}')
+        debugPrint(f'>> {data}')
         strdata = bytearray(data, 'utf8') + b'\n'
         port.write(strdata)
         time.sleep(0.010)
@@ -60,37 +64,38 @@ def Upload(source, target, env):
         clean_responses = []
         responses = port.readlines()
         for Resp in responses:
-            # Test: suppress invaid chars (coming from debug info)
+            # Suppress invalid chars (coming from debug info)
             try:
                 clean_response = Resp.decode('utf8').rstrip().lstrip()
                 clean_responses.append(clean_response)
+                debugPrint(f'<< {clean_response}')
             except:
                 pass
-            if Debug: print(f'<< {clean_response}')
         return clean_responses
 
     #------------------#
     # SDCard functions #
     #------------------#
     def _CheckSDCard():
-        if Debug: print('Checking SD card...')
+        debugPrint('Checking SD card...')
         _Send('M21')
         Responses = _Recv()
         if len(Responses) < 1 or not any('SD card ok' in r for r in Responses):
+            debugPrint(Responses)
             raise Exception('Error accessing SD card')
-        if Debug: print('SD Card OK')
+        debugPrint('SD Card OK')
         return True
 
     #----------------#
     # File functions #
     #----------------#
     def _GetFirmwareFiles(UseLongFilenames):
-        if Debug: print('Get firmware files...')
+        debugPrint('Get firmware files...')
         _Send(f"M20 F{'L' if UseLongFilenames else ''}")
         Responses = _Recv()
         if len(Responses) < 3 or not any('file list' in r for r in Responses):
             raise Exception('Error getting firmware files')
-        if Debug: print('OK')
+        debugPrint('OK')
         return Responses
 
     def _FilterFirmwareFiles(FirmwareList, UseLongFilenames):
@@ -114,6 +119,17 @@ def Upload(source, target, env):
             raise Exception(f"Firmware file '{FirmwareFile}' not removed")
         return Removed
 
+    def _RollbackUpload(FirmwareFile):
+        if not rollback: return
+        print(f"Rollback: trying to delete firmware '{FirmwareFile}'...")
+        _OpenPort()
+        # Wait for SD card release
+        time.sleep(1)
+        # Remount SD card
+        _CheckSDCard()
+        print(' OK' if _RemoveFirmwareFile(FirmwareFile) else ' Error!')
+        _ClosePort()
+
 
     #---------------------#
     # Callback Entrypoint #
@@ -121,6 +137,7 @@ def Upload(source, target, env):
     port = None
     protocol = None
     filetransfer = None
+    rollback = False
 
     # Get Marlin evironment vars
     MarlinEnv = env['MARLIN_FEATURES']
@@ -136,13 +153,14 @@ def Upload(source, target, env):
     marlin_string_config_h_author = _GetMarlinEnv(MarlinEnv, 'STRING_CONFIG_H_AUTHOR')
 
     # Get firmware upload params
-    upload_firmware_source_name = str(source[0])    # Source firmware filename
+    upload_firmware_source_path = os.path.join(env["PROJECT_BUILD_DIR"], env["PIOENV"], f"{env['PROGNAME']}.bin") if 'PROGNAME' in env else str(source[0])
+                                                    # Source firmware filename
     upload_speed = env['UPLOAD_SPEED'] if 'UPLOAD_SPEED' in env else 115200
                                                     # baud rate of serial connection
     upload_port = _GetUploadPort(env)               # Serial port to use
 
     # Set local upload params
-    upload_firmware_target_name = os.path.basename(upload_firmware_source_name)
+    upload_firmware_target_name = os.path.basename(upload_firmware_source_path)
                                                     # Target firmware filename
     upload_timeout = 1000                           # Communication timout, lossy/slow connections need higher values
     upload_blocksize = 512                          # Transfer block size. 512 = Autodetect
@@ -157,9 +175,22 @@ def Upload(source, target, env):
                                                     'BOARD_CREALITY_V427', 'BOARD_CREALITY_V431',  'BOARD_CREALITY_V452', 'BOARD_CREALITY_V453',
                                                     'BOARD_CREALITY_V24S1']
     # "upload_random_name": generate a random 8.3 firmware filename to upload
-    upload_random_filename = marlin_motherboard in ['BOARD_CREALITY_V4',   'BOARD_CREALITY_V4210', 'BOARD_CREALITY_V422', 'BOARD_CREALITY_V423',
-                                                    'BOARD_CREALITY_V427', 'BOARD_CREALITY_V431',  'BOARD_CREALITY_V452', 'BOARD_CREALITY_V453',
-                                                    'BOARD_CREALITY_V24S1'] and not marlin_long_filename_host_support
+    upload_random_filename = upload_delete_old_bins and not marlin_long_filename_host_support
+
+    # Heatshrink module is needed (only) for compression
+    if upload_compression:
+        if sys.version_info[0] > 2:
+            try:
+               import heatshrink2
+            except ImportError:
+               print("Installing 'heatshrink2' python module...")
+               env.Execute(env.subst("$PYTHONEXE -m pip install heatshrink2"))
+        else:
+            try:
+               import heatshrink
+            except ImportError:
+               print("Installing 'heatshrink' python module...")
+               env.Execute(env.subst("$PYTHONEXE -m pip install heatshrink"))
 
     try:
 
@@ -181,7 +212,7 @@ def Upload(source, target, env):
             print(f' LONG_FILENAME_WRITE_SUPPORT : {marlin_longname_write}')
             print(f' CUSTOM_FIRMWARE_UPLOAD      : {marlin_custom_firmware_upload}')
             print('---- Upload parameters ------------------------')
-            print(f' Source                      : {upload_firmware_source_name}')
+            print(f' Source                      : {upload_firmware_source_path}')
             print(f' Target                      : {upload_firmware_target_name}')
             print(f' Port                        : {upload_port} @ {upload_speed} baudrate')
             print(f' Timeout                     : {upload_timeout}')
@@ -204,9 +235,9 @@ def Upload(source, target, env):
             if not marlin_custom_firmware_upload:
                 raise Exception(f"CUSTOM_FIRMWARE_UPLOAD must be enabled in 'Configuration_adv.h' for '{marlin_motherboard}'")
 
-            # Init serial port
+            # Init & Open serial port
             port = serial.Serial(upload_port, baudrate = upload_speed, write_timeout = 0, timeout = 0.1)
-            port.reset_input_buffer()
+            _OpenPort()
 
             # Check SD card status
             _CheckSDCard()
@@ -228,24 +259,26 @@ def Upload(source, target, env):
                     print(' OK' if _RemoveFirmwareFile(OldFirmwareFile) else ' Error!')
 
             # Close serial
-            port.close()
+            _ClosePort()
 
             # Cleanup completed
-            if Debug: print('Cleanup completed')
+            debugPrint('Cleanup completed')
 
         # WARNING! The serial port must be closed here because the serial transfer that follow needs it!
 
         # Upload firmware file
-        if Debug: print(f"Copy '{upload_firmware_source_name}' --> '{upload_firmware_target_name}'")
+        debugPrint(f"Copy '{upload_firmware_source_path}' --> '{upload_firmware_target_name}'")
         protocol = MarlinBinaryProtocol.Protocol(upload_port, upload_speed, upload_blocksize, float(upload_error_ratio), int(upload_timeout))
         #echologger = MarlinBinaryProtocol.EchoProtocol(protocol)
         protocol.connect()
+        # Mark the rollback (delete broken transfer) from this point on
+        rollback = True
         filetransfer = MarlinBinaryProtocol.FileTransferProtocol(protocol)
-        filetransfer.copy(upload_firmware_source_name, upload_firmware_target_name, upload_compression, upload_test)
+        transferOK = filetransfer.copy(upload_firmware_source_path, upload_firmware_target_name, upload_compression, upload_test)
         protocol.disconnect()
 
         # Notify upload completed
-        protocol.send_ascii('M117 Firmware uploaded')
+        protocol.send_ascii('M117 Firmware uploaded' if transferOK else 'M117 Firmware upload failed')
 
         # Remount SD card
         print('Wait for SD card release...')
@@ -253,34 +286,56 @@ def Upload(source, target, env):
         print('Remount SD card')
         protocol.send_ascii('M21')
 
-        # Trigger firmware update
-        if upload_reset:
-            print('Trigger firmware update...')
-            protocol.send_ascii('M997', True)
+        # Transfer failed?
+        if not transferOK:
+            protocol.shutdown()
+            _RollbackUpload(upload_firmware_target_name)
+        else:
+            # Trigger firmware update
+            if upload_reset:
+                print('Trigger firmware update...')
+                protocol.send_ascii('M997', True)
+            protocol.shutdown()
 
-        protocol.shutdown()
-        print('Firmware update completed')
+        print('Firmware update completed' if transferOK else 'Firmware update failed')
+        return 0 if transferOK else -1
 
     except KeyboardInterrupt:
-        if port: port.close()
+        print('Aborted by user')
         if filetransfer: filetransfer.abort()
-        if protocol: protocol.shutdown()
+        if protocol:
+            protocol.disconnect()
+            protocol.shutdown()
+        _RollbackUpload(upload_firmware_target_name)
+        _ClosePort()
         raise
 
     except serial.SerialException as se:
-        if port: port.close()
-        print(f'Serial excepion: {se}')
+        # This exception is raised only for send_ascii data (not for binary transfer)
+        print(f'Serial excepion: {se}, transfer aborted')
+        if protocol:
+            protocol.disconnect()
+            protocol.shutdown()
+        _RollbackUpload(upload_firmware_target_name)
+        _ClosePort()
         raise Exception(se)
 
     except MarlinBinaryProtocol.FatalError:
-        if port: port.close()
-        if protocol: protocol.shutdown()
-        print('Too many retries, Abort')
+        print('Too many retries, transfer aborted')
+        if protocol:
+            protocol.disconnect()
+            protocol.shutdown()
+        _RollbackUpload(upload_firmware_target_name)
+        _ClosePort()
         raise
 
-    except:
-        if port: port.close()
-        if protocol: protocol.shutdown()
+    except Exception as ex:
+        print(f"\nException: {ex}, transfer aborted")
+        if protocol:
+            protocol.disconnect()
+            protocol.shutdown()
+        _RollbackUpload(upload_firmware_target_name)
+        _ClosePort()
         print('Firmware not updated')
         raise
 

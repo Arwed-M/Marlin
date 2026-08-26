@@ -142,8 +142,8 @@
 #ifndef HEATER_BED_PIN
   #define HEATER_BED_PIN                    PA2   // HOT BED
 #endif
-#ifndef FAN_PIN
-  #define FAN_PIN                           PA0   // FAN
+#ifndef FAN0_PIN
+  #define FAN0_PIN                           PA0   // FAN
 #endif
 #define FAN_SOFT_PWM_REQUIRED
 
@@ -152,7 +152,7 @@
 //
 #define SD_DETECT_PIN                       PC7
 #define SDCARD_CONNECTION                ONBOARD
-#define SDIO_SUPPORT
+#define ONBOARD_SDIO
 #define NO_SD_HOST_DRIVE                          // This board's SD is only seen by the printer
 
 #if ENABLED(CR10_STOCKDISPLAY)

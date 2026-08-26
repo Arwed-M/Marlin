@@ -41,7 +41,6 @@
 #if !defined(USBCON) && (defined(UBRRH) || defined(UBRR0H) || defined(UBRR1H) || defined(UBRR2H) || defined(UBRR3H))
 
 #include "MarlinSerial.h"
-#include "../../MarlinCore.h"
 
 #if ENABLED(DIRECT_STEPPING)
   #include "../../feature/direct_stepping.h"
@@ -486,7 +485,7 @@ void MarlinSerial<Cfg>::write(const uint8_t c) {
     const uint8_t i = (tx_buffer.head + 1) & (Cfg::TX_SIZE - 1);
 
     // If global interrupts are disabled (as the result of being called from an ISR)...
-    if (!ISRS_ENABLED()) {
+    if (!hal.isr_state()) {
 
       // Make room by polling if it is possible to transmit, and do so!
       while (i == tx_buffer.tail) {
@@ -534,7 +533,7 @@ void MarlinSerial<Cfg>::flushTX() {
     if (!_written) return;
 
     // If global interrupts are disabled (as the result of being called from an ISR)...
-    if (!ISRS_ENABLED()) {
+    if (!hal.isr_state()) {
 
       // Wait until everything was transmitted - We must do polling, as interrupts are disabled
       while (tx_buffer.head != tx_buffer.tail || !B_TXC) {
@@ -601,20 +600,20 @@ MSerialT1 customizedSerial1(MSerialT1::HasEmergencyParser);
 
 #endif // SERIAL_PORT_3
 
-#ifdef MMU2_SERIAL_PORT
+#ifdef MMU_SERIAL_PORT
 
-  ISR(SERIAL_REGNAME(USART, MMU2_SERIAL_PORT, _RX_vect)) {
-    MarlinSerial<MMU2SerialCfg<MMU2_SERIAL_PORT>>::store_rxd_char();
+  ISR(SERIAL_REGNAME(USART, MMU_SERIAL_PORT, _RX_vect)) {
+    MarlinSerial<MMU2SerialCfg<MMU_SERIAL_PORT>>::store_rxd_char();
   }
 
-  ISR(SERIAL_REGNAME(USART, MMU2_SERIAL_PORT, _UDRE_vect)) {
-    MarlinSerial<MMU2SerialCfg<MMU2_SERIAL_PORT>>::_tx_udr_empty_irq();
+  ISR(SERIAL_REGNAME(USART, MMU_SERIAL_PORT, _UDRE_vect)) {
+    MarlinSerial<MMU2SerialCfg<MMU_SERIAL_PORT>>::_tx_udr_empty_irq();
   }
 
-  template class MarlinSerial< MMU2SerialCfg<MMU2_SERIAL_PORT> >;
+  template class MarlinSerial< MMU2SerialCfg<MMU_SERIAL_PORT> >;
   MSerialMMU2 mmuSerial(MSerialMMU2::HasEmergencyParser);
 
-#endif // MMU2_SERIAL_PORT
+#endif // MMU_SERIAL_PORT
 
 #ifdef LCD_SERIAL_PORT
 
@@ -629,7 +628,7 @@ MSerialT1 customizedSerial1(MSerialT1::HasEmergencyParser);
   template class MarlinSerial< LCDSerialCfg<LCD_SERIAL_PORT> >;
   MSerialLCD lcdSerial(MSerialLCD::HasEmergencyParser);
 
-  #if HAS_DGUS_LCD
+  #if ANY(HAS_DGUS_LCD, EXTENSIBLE_UI)
     template<typename Cfg>
     typename MarlinSerial<Cfg>::ring_buffer_pos_t MarlinSerial<Cfg>::get_tx_buffer_free() {
       const ring_buffer_pos_t t = tx_buffer.tail,  // next byte to send.

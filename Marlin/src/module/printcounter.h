@@ -35,11 +35,13 @@ struct printStatistics {    // 16 bytes
   //const uint8_t magic;    // Magic header, it will always be 0x16
   uint16_t totalPrints;     // Number of prints
   uint16_t finishedPrints;  // Number of complete prints
-  uint32_t printTime;       // Accumulated printing time
-  uint32_t longestPrint;    // Longest successful print job
-  float    filamentUsed;    // Accumulated filament consumed in mm
+  uint32_t printTime;       // (s) Accumulated printing time
+  uint32_t longestPrint;    // (s) Longest successful print job
+  #if HAS_EXTRUDERS
+    float  filamentUsed;    // Accumulated filament consumed in mm
+  #endif
   #if SERVICE_INTERVAL_1 > 0
-    uint32_t nextService1;  // Service intervals (or placeholders)
+    uint32_t nextService1;  // (s) Service intervals (or placeholders)
   #endif
   #if SERVICE_INTERVAL_2 > 0
     uint32_t nextService2;
@@ -52,12 +54,7 @@ struct printStatistics {    // 16 bytes
 class PrintCounter: public Stopwatch {
   private:
     typedef Stopwatch super;
-
-    #if EITHER(USE_WIRED_EEPROM, CPU_32_BIT)
-      typedef uint32_t eeprom_address_t;
-    #else
-      typedef uint16_t eeprom_address_t;
-    #endif
+    typedef IF<ANY(USE_WIRED_EEPROM, CPU_32_BIT), uint32_t, uint16_t>::type eeprom_address_t;
 
     static printStatistics data;
 
@@ -89,7 +86,7 @@ class PrintCounter: public Stopwatch {
      * @details Store the timestamp of the last deltaDuration(), this is
      * required due to the updateInterval cycle.
      */
-    static millis_t lastDuration;
+    static uint32_t lastDuration;
 
     /**
      * @brief Stats were loaded from EEPROM
@@ -105,7 +102,7 @@ class PrintCounter: public Stopwatch {
      * used internally for print statistics accounting is not intended to be a
      * user callable function.
      */
-    static millis_t deltaDuration();
+    static uint32_t deltaDuration();
 
   public:
 
@@ -124,13 +121,15 @@ class PrintCounter: public Stopwatch {
      */
     FORCE_INLINE static bool isLoaded() { return loaded; }
 
-    /**
-     * @brief Increment the total filament used
-     * @details The total filament used counter will be incremented by "amount".
-     *
-     * @param amount The amount of filament used in mm
-     */
-    static void incFilamentUsed(float const &amount);
+    #if HAS_EXTRUDERS
+      /**
+       * @brief Increment the total filament used
+       * @details The total filament used counter will be incremented by "amount".
+       *
+       * @param amount The amount of filament used in mm
+       */
+      static void incFilamentUsed(float const &amount);
+    #endif
 
     /**
      * @brief Reset the Print Statistics
